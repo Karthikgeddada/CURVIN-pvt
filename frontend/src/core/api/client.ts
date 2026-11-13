@@ -6,7 +6,7 @@ import type { HealthResponse } from "@/shared/types/api";
  * Central API client. All network access goes through this module so
  * error handling, headers and tracing stay consistent everywhere.
  */
-const BASE_URL = `${env.apiUrl}${API_PREFIX}`;
+const BASE_URL = `${env.apiBaseUrl}${API_PREFIX}`;
 
 export class ApiClient {
   async request<T>(path: string, init?: RequestInit): Promise<T> {

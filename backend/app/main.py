@@ -38,11 +38,14 @@ def create_app() -> FastAPI:
         redoc_url=None,
     )
 
+    # Origins are env-configurable (CURVIN_CORS_ORIGINS); the defaults
+    # include the production Vercel frontend and local dev servers.
+    # No wildcard origin: allow_credentials=True forbids it.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_methods=["*"],
         allow_headers=["*"],
     )
 

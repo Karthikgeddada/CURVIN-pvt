@@ -26,6 +26,7 @@ class Settings:
         default_factory=lambda: _parse_origins(
             os.environ.get(
                 "CURVIN_CORS_ORIGINS",
+                "https://curvin-pvt.vercel.app,"
                 "http://localhost:5173,http://127.0.0.1:5173",
             )
         )
