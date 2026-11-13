@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/*
+ * CURVIN design tokens.
+ * Semantic values are defined once as CSS custom properties, in light
+ * and dark schemes, and exposed to Tailwind via @theme inline so
+ * utilities such as bg-background / text-foreground / border-border
+ * remain theme-aware.
+ */
+
+:root {
+  --background: #fbfbfd;
+  --foreground: #0e0e10;
+  --muted: #6e6e73;
+  --subtle: #f2f2f4;
+  --hairline: #e3e3e6;
+  --accent: #0e0e10;
+  --accent-foreground: #fbfbfd;
+  --success: #1d7a45;
+  --warning: #b25000;
+  --danger: #c0392b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b0b0d;
+    --foreground: #f5f5f7;
+    --muted: #98989d;
+    --subtle: #17171a;
+    --hairline: #26262b;
+    --accent: #f5f5f7;
+    --accent-foreground: #0b0b0d;
+    --success: #32d074;
+    --warning: #ff9f4a;
+    --danger: #ff6b5e;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-hairline: var(--hairline);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    Inter, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background-color: var(--foreground);
+    color: var(--background);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

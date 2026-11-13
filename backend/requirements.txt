@@ -1,0 +1,4 @@
+# CURVIN backend runtime dependencies.
+# Keep this list minimal; every addition must be justified.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0

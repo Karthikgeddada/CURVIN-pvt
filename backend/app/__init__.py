@@ -1,0 +1,1 @@
+"""CURVIN backend application package."""
