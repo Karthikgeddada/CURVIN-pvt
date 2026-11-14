@@ -306,10 +306,13 @@ def _companyfacts_payload() -> dict:
         "entityName": "NVIDIA CORPORATION",
         "facts": {
             "us-gaap": {
+                # Recent SEC payloads often carry no "frame" at all —
+                # the parser must not depend on it.
                 "Revenues": concept(
                     "USD",
                     [
                         {
+                            "start": "2023-01-30",
                             "end": "2024-01-28",
                             "val": 60922000000,
                             "fy": 2024,
@@ -317,7 +320,18 @@ def _companyfacts_payload() -> dict:
                             "form": "10-K",
                             "frame": "CY2023",
                         },
+                        # Same period, restated in a later filing without
+                        # a frame — the latest filing must win.
                         {
+                            "start": "2023-01-30",
+                            "end": "2024-01-28",
+                            "val": 60922000000,
+                            "fy": 2025,
+                            "fp": "FY",
+                            "form": "10-K",
+                        },
+                        {
+                            "start": "2024-01-29",
                             "end": "2025-01-26",
                             "val": 130497000000,
                             "fy": 2025,
@@ -325,18 +339,43 @@ def _companyfacts_payload() -> dict:
                             "form": "10-K",
                             "frame": "CY2024",
                         },
+                        # A quarterly comparative from the same 10-K —
+                        # must be rejected by the annual-span check.
+                        {
+                            "start": "2024-07-29",
+                            "end": "2024-10-27",
+                            "val": 35100000000,
+                            "fy": 2025,
+                            "fp": "FY",
+                            "form": "10-K",
+                        },
                     ],
                 ),
+                # Frame-less duration entry (how recent filings report).
                 "NetIncomeLoss": concept(
                     "USD",
                     [
                         {
+                            "start": "2024-01-29",
                             "end": "2025-01-26",
                             "val": 72880000000,
                             "fy": 2025,
                             "fp": "FY",
                             "form": "10-K",
-                            "frame": "CY2024",
+                        }
+                    ],
+                ),
+                # Instant concept with a CYyyyyQ4I frame (balance sheet).
+                "Assets": concept(
+                    "USD",
+                    [
+                        {
+                            "end": "2025-01-26",
+                            "val": 111601000000,
+                            "fy": 2025,
+                            "fp": "FY",
+                            "form": "10-K",
+                            "frame": "CY2024Q4I",
                         }
                     ],
                 ),
@@ -344,6 +383,7 @@ def _companyfacts_payload() -> dict:
                     "USD/shares",
                     [
                         {
+                            "start": "2024-01-29",
                             "end": "2025-01-26",
                             "val": 2.94,
                             "fy": 2025,
@@ -388,6 +428,7 @@ def test_companyfacts_parse_extracts_annual_figures(monkeypatch):
     assert years[0].revenue == 130497000000.0
     assert years[0].net_income == 72880000000.0
     assert years[0].diluted_eps == 2.94
+    assert years[0].total_assets == 111601000000.0
     assert years[1].revenue == 60922000000.0
     assert years[1].net_income is None
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import os
 from collections import defaultdict
+from datetime import date
 from typing import Any
 
 import httpx
@@ -42,19 +43,42 @@ MAX_YEARS = 6
 
 
 def _annual_entries(concept: dict[str, Any]) -> list[dict[str, Any]]:
-    """Annual (10-K) entries carrying an explicit CY calendar frame."""
-    for entries in concept.get("units", {}).values():
-        usable = [
-            e
-            for e in entries
-            if e.get("form") == "10-K"
-            and isinstance(e.get("frame"), str)
-            and e.get("frame", "").startswith("CY")
-            and "Q" not in e.get("frame", "")
-        ]
-        if usable:
-            return usable
-    return []
+    """Annual (10-K) entries, deduplicated by period end date.
+
+    Real payloads are messy: recent filings often carry no ``frame`` at
+    all, balance-sheet instants use ``CYyyyyQ4I`` frames, and the same
+    period is restated across multiple filings. Instead of relying on
+    frames we take every 10-K entry, reject spans that are not ~one
+    year long (interim/quarterly values), and keep for each period end
+    the entry from the most recent filing (largest ``fy``) — the
+    latest audited restatement of that period.
+    """
+    best: dict[str, dict[str, Any]] = {}
+    for unit, entries in concept.get("units", {}).items():
+        if unit not in ("USD", "USD/shares"):
+            continue
+        for e in entries:
+            if e.get("form") != "10-K" or e.get("fp") != "FY":
+                continue
+            end = str(e.get("end") or "")
+            if not end:
+                continue
+            start = str(e.get("start") or "")
+            if start:
+                # Duration concept — only accept spans of ~one fiscal
+                # year so quarterly comparatives never leak in.
+                try:
+                    days = (
+                        date.fromisoformat(end) - date.fromisoformat(start)
+                    ).days
+                except ValueError:
+                    continue
+                if not 300 <= days <= 380:
+                    continue
+            current = best.get(end)
+            if current is None or (e.get("fy") or 0) >= (current.get("fy") or 0):
+                best[end] = e
+    return list(best.values())
 
 
 class SecEdgarFundamentalsProvider:
