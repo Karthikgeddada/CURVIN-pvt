@@ -10,6 +10,8 @@ from fastapi import APIRouter, Query
 
 from app.core.errors import DomainError
 from app.services.company_service import company_service
+from app.services.intelligence_service import intelligence_service
+from app.services.market_service import market_service
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 
@@ -38,6 +40,27 @@ async def search_companies(
 async def list_exchanges() -> dict[str, object]:
     """Supported exchanges with coverage counts."""
     return await company_service.exchanges()
+
+
+@router.get("/{ticker}/market")
+async def get_company_market(ticker: str) -> dict[str, object]:
+    """Licensed market quote for a ticker, or an honest unavailability."""
+    return await market_service.quote_payload(ticker)
+
+
+@router.get("/{ticker}/fundamentals")
+async def get_company_fundamentals(ticker: str) -> dict[str, object]:
+    """Audited annual financials keyed by CIK from SEC XBRL facts."""
+    return await intelligence_service.fundamentals_payload(ticker)
+
+
+@router.get("/{ticker}/filings")
+async def get_company_filings(
+    ticker: str,
+    limit: int = Query(default=10, ge=1, le=50),
+) -> dict[str, object]:
+    """Recent SEC filings keyed by CIK, newest first."""
+    return await intelligence_service.filings_payload(ticker, limit=limit)
 
 
 @router.get("/{ticker}")

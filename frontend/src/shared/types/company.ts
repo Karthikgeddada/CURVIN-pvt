@@ -91,3 +91,54 @@ export interface RecentCompany {
   exchange: string;
   viewed_at: string;
 }
+
+// --- M2 company intelligence ----------------------------------------
+
+/** Response of GET /companies/{ticker}/market. */
+export interface CompanyMarketResponse {
+  ticker: string;
+  /** Null when no licensed provider is configured or reachable. */
+  quote: CompanyMarket | null;
+  data_source: DataSourceInfo;
+  as_of: string;
+}
+
+/** One audited annual fiscal year, straight from SEC XBRL facts. */
+export interface FiscalYearSummary {
+  fiscal_year: number;
+  period_end: string;
+  currency: string;
+  revenue: number | null;
+  net_income: number | null;
+  operating_income: number | null;
+  total_assets: number | null;
+  stockholders_equity: number | null;
+  diluted_eps: number | null;
+}
+
+/** Response of GET /companies/{ticker}/fundamentals. */
+export interface CompanyFundamentalsResponse {
+  ticker: string;
+  available: boolean;
+  fiscal_years: FiscalYearSummary[];
+  data_source: DataSourceInfo;
+  as_of: string;
+}
+
+/** One SEC filing, newest first. */
+export interface CompanyFiling {
+  form: string;
+  filed_at: string;
+  accession_no: string;
+  report_period: string | null;
+  primary_document: string;
+  url: string;
+}
+
+/** Response of GET /companies/{ticker}/filings. */
+export interface CompanyFilingsResponse {
+  ticker: string;
+  filings: CompanyFiling[];
+  data_source: DataSourceInfo;
+  as_of: string;
+}

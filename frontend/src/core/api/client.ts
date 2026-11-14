@@ -2,6 +2,9 @@ import { API_PREFIX, env } from "@/app/config/env";
 import { ApiError } from "@/core/error-handling/ApiError";
 import type { HealthResponse } from "@/shared/types/api";
 import type {
+  CompanyFilingsResponse,
+  CompanyFundamentalsResponse,
+  CompanyMarketResponse,
   CompanyProfile,
   CompanySearchResponse,
   ExchangeListResponse,
@@ -78,6 +81,30 @@ export class ApiClient {
   /** Supported exchanges with coverage counts. */
   getExchanges(): Promise<ExchangeListResponse> {
     return this.request<ExchangeListResponse>("/companies/exchanges");
+  }
+
+  /** Licensed market quote, or an honest unavailability. */
+  getCompanyMarket(ticker: string): Promise<CompanyMarketResponse> {
+    return this.request<CompanyMarketResponse>(
+      `/companies/${encodeURIComponent(ticker)}/market`,
+    );
+  }
+
+  /** Audited annual financials keyed by CIK from SEC XBRL facts. */
+  getCompanyFundamentals(ticker: string): Promise<CompanyFundamentalsResponse> {
+    return this.request<CompanyFundamentalsResponse>(
+      `/companies/${encodeURIComponent(ticker)}/fundamentals`,
+    );
+  }
+
+  /** Recent SEC filings keyed by CIK, newest first. */
+  getCompanyFilings(
+    ticker: string,
+    limit = 10,
+  ): Promise<CompanyFilingsResponse> {
+    return this.request<CompanyFilingsResponse>(
+      `/companies/${encodeURIComponent(ticker)}/filings?limit=${limit}`,
+    );
   }
 }
 

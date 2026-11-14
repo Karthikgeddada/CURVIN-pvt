@@ -1,0 +1,130 @@
+"""SEC EDGAR fundamentals provider (XBRL company facts).
+
+Reads the public ``companyfacts`` API — audited annual figures keyed
+by CIK, exactly the governed-reference-data source the product docs
+specify. Only reported values are served; missing concepts stay null.
+Nothing is estimated, interpolated or synthesised.
+
+The response payload is large (multi-MB), so results are cached by
+CIK at the service layer with a TTL appropriate for filings data.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+from collections import defaultdict
+from typing import Any
+
+import httpx
+
+from app.providers.base import FiscalYear
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_URL = "https://data.sec.gov/api/xbrl/companyfacts"
+
+# XBRL concepts mapped to the FiscalYear fields they feed. Revenue has
+# two common tags; both are accepted, preferring the generic one.
+_CONCEPTS: dict[str, tuple[str, ...]] = {
+    "revenue": (
+        "Revenues",
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
+    ),
+    "net_income": ("NetIncomeLoss",),
+    "operating_income": ("OperatingIncomeLoss",),
+    "total_assets": ("Assets",),
+    "stockholders_equity": ("StockholdersEquity",),
+    "diluted_eps": ("EarningsPerShareDiluted",),
+}
+
+MAX_YEARS = 6
+
+
+def _annual_entries(concept: dict[str, Any]) -> list[dict[str, Any]]:
+    """Annual (10-K) entries carrying an explicit CY calendar frame."""
+    for entries in concept.get("units", {}).values():
+        usable = [
+            e
+            for e in entries
+            if e.get("form") == "10-K"
+            and isinstance(e.get("frame"), str)
+            and e.get("frame", "").startswith("CY")
+            and "Q" not in e.get("frame", "")
+        ]
+        if usable:
+            return usable
+    return []
+
+
+class SecEdgarFundamentalsProvider:
+    """Live annual financials from SEC XBRL company facts."""
+
+    name = "sec-edgar"
+    label = "SEC EDGAR"
+
+    def __init__(
+        self,
+        base_url: str = DEFAULT_URL,
+        timeout: float = 15.0,
+    ) -> None:
+        self._base_url = base_url
+        self._timeout = timeout
+
+    async def get_annual(self, cik: str) -> list[FiscalYear]:
+        cik_int = str(int(cik))  # accepts both '1045810' and '0001045810'
+        url = f"{self._base_url}/CIK{cik_int.zfill(10)}.json"
+        user_agent = os.environ.get(
+            "CURVIN_SEC_USER_AGENT",
+            "CURVIN Research research@curvin.example",
+        )
+        async with httpx.AsyncClient(
+            timeout=self._timeout,
+            headers={"User-Agent": user_agent},
+            follow_redirects=True,
+        ) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            payload: dict[str, Any] = response.json()
+
+        facts: dict[str, Any] = payload.get("facts", {}).get("us-gaap", {})
+        if not facts:
+            return []
+
+        # value[year][field] — the first concept with a usable annual
+        # entry wins (generic Revenues beats the contract-revenue tag).
+        years: dict[int, dict[str, float]] = defaultdict(dict)
+        period_ends: dict[int, str] = {}
+
+        for field, concepts in _CONCEPTS.items():
+            for concept_name in concepts:
+                concept = facts.get(concept_name)
+                if not concept:
+                    continue
+                for entry in _annual_entries(concept):
+                    end = str(entry.get("end", ""))
+                    if not end:
+                        continue
+                    year = int(end[:4])
+                    if field not in years[year]:
+                        years[year][field] = float(entry["val"])
+                        period_ends[year] = end
+
+        result: list[FiscalYear] = []
+        for year in sorted(years, reverse=True)[:MAX_YEARS]:
+            row = years[year]
+            result.append(
+                FiscalYear(
+                    fiscal_year=year,
+                    period_end=period_ends[year],
+                    currency="USD",
+                    revenue=row.get("revenue"),
+                    net_income=row.get("net_income"),
+                    operating_income=row.get("operating_income"),
+                    total_assets=row.get("total_assets"),
+                    stockholders_equity=row.get("stockholders_equity"),
+                    diluted_eps=row.get("diluted_eps"),
+                )
+            )
+        logger.info("Parsed %d fiscal years for CIK %s", len(result), cik)
+        return result

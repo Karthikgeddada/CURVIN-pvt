@@ -37,3 +37,102 @@ class CompanyProvider(Protocol):
         fall back; providers never return partial data silently.
         """
         ...  # pragma: no cover
+
+
+# --- Market data (M2) -------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Quote:
+    """One verified market quote. Only ever sourced from a licensed
+    provider — CURVIN never serves simulated or estimated prices."""
+
+    ticker: str
+    price: float
+    previous_close: float
+    change: float
+    change_percent: float
+    currency: str
+    market_capitalization: float | None
+    as_of: float  # unix epoch seconds
+    data_delay: str  # realtime | delayed | eod
+
+
+class MarketQuoteProvider(Protocol):
+    """Anything that can produce current quotes for listed tickers."""
+
+    name: str
+    label: str
+
+    async def get_quote(self, ticker: str) -> Quote | None:
+        """Return the current quote, or None when the ticker is unknown.
+
+        Raises on transport/provider failure — the service layer turns
+        that into an honest unavailability, never into substitute data.
+        """
+        ...  # pragma: no cover
+
+
+# --- Fundamentals (M2) ------------------------------------------------
+
+
+@dataclass(frozen=True)
+class FiscalYear:
+    """One audited annual period, sourced from XBRL company facts."""
+
+    fiscal_year: int
+    period_end: str  # ISO date
+    currency: str
+    revenue: float | None
+    net_income: float | None
+    operating_income: float | None
+    total_assets: float | None
+    stockholders_equity: float | None
+    diluted_eps: float | None
+
+
+class FundamentalsProvider(Protocol):
+    """Anything that can produce annual financials for a CIK."""
+
+    name: str
+    label: str
+
+    async def get_annual(self, cik: str) -> list[FiscalYear]:
+        """Return annual periods, most recent first. Raises on failure."""
+        ...  # pragma: no cover
+
+
+# --- Filings (M2) -----------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Filing:
+    """One SEC filing from the submissions feed."""
+
+    form: str
+    filed_at: str  # ISO date
+    accession_no: str
+    report_period: str | None  # ISO date, when reported
+    primary_document: str | None
+
+    def document_url(self, cik: str) -> str | None:
+        """Public URL of the primary document, when one exists."""
+        if not self.primary_document:
+            return None
+        cik_int = str(int(cik))
+        no_dashes = self.accession_no.replace("-", "")
+        return (
+            f"https://www.sec.gov/Archives/edgar/data/"
+            f"{cik_int}/{no_dashes}/{self.primary_document}"
+        )
+
+
+class FilingsProvider(Protocol):
+    """Anything that can produce recent filings for a CIK."""
+
+    name: str
+    label: str
+
+    async def get_recent(self, cik: str, limit: int = 10) -> list[Filing]:
+        """Return the most recent filings, newest first. Raises on failure."""
+        ...  # pragma: no cover

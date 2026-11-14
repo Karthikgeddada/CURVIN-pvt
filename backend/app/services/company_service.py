@@ -156,7 +156,13 @@ class CompanyService:
             "data_source": universe.source.as_dict(),
         }
 
-    async def profile(self, ticker: str) -> dict[str, object]:
+    async def resolve(self, ticker: str) -> Company:
+        """Resolve a ticker to its verified reference record.
+
+        Raises ``company_not_found`` (404) for unknown tickers. Used by
+        the discovery routes and by the M2 intelligence services, which
+        key live SEC lookups off the CIK.
+        """
         universe = await self._universe()
         wanted = ticker.strip().upper()
         company = next(
@@ -169,6 +175,11 @@ class CompanyService:
                 f"No company found for ticker {wanted}.",
                 status_code=404,
             )
+        return company
+
+    async def profile(self, ticker: str) -> dict[str, object]:
+        universe = await self._universe()
+        company = await self.resolve(ticker)
 
         base, dot, suffix = company.ticker.partition(".")
         share_class = suffix.upper() if dot and suffix else None
