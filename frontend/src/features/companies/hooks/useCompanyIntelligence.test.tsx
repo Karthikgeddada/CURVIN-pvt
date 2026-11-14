@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Regression test for the `this`-detachment crash seen in production:
  * the hook passed apiClient.getCompanyMarket as a bare reference, so

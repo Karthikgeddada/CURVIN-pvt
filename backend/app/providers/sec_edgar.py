@@ -1,10 +1,15 @@
 """SEC EDGAR company-reference provider.
 
-Loads the public ``company_tickers.json`` dataset (name, ticker, CIK
-for every SEC registrant). Exchange attribution comes from a curated
-map of well-known listings; everything else is honestly labelled
-``US Composite`` rather than guessed. Sector and industry are not part
-of this dataset and are therefore left unset — no inference.
+Loads the public ``company_tickers_exchange.json`` dataset — cik, name,
+ticker and exchange for every SEC registrant (10k+ entries). Exchange
+names are normalised to upper case ("Nasdaq" -> "NASDAQ"); entries with
+no exchange attribute are honestly labelled ``US Composite`` rather
+than guessed. Sector and industry are not part of this dataset and are
+therefore left unset — no inference.
+
+This is the PRIMARY discovery source. When it is unreachable the
+company service falls back to the deterministic fixtures and flags
+every response as degraded.
 """
 
 from __future__ import annotations
@@ -19,22 +24,22 @@ from app.providers.base import Company
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_URL = "https://www.sec.gov/files/company_tickers.json"
+DEFAULT_URL = (
+    "https://www.sec.gov/files/company_tickers_exchange.json"
+)
 
-# Curated exchange attribution for widely-held listings. Entries not
-# listed here are "US Composite" (multi-exchange or unknown).
-_EXCHANGE_MAP: dict[str, str] = {
-    "AAPL": "NASDAQ", "MSFT": "NASDAQ", "NVDA": "NASDAQ", "GOOGL": "NASDAQ",
-    "AMZN": "NASDAQ", "META": "NASDAQ", "TSLA": "NASDAQ", "AMD": "NASDAQ",
-    "INTC": "NASDAQ", "CSCO": "NASDAQ", "ADBE": "NASDAQ", "QCOM": "NASDAQ",
-    "AVGO": "NASDAQ", "PEP": "NASDAQ", "NFLX": "NASDAQ", "COST": "NASDAQ",
-    "TXN": "NASDAQ", "AMAT": "NASDAQ", "INTU": "NASDAQ", "CMCSA": "NASDAQ",
-    "BRK.B": "NYSE", "JPM": "NYSE", "V": "NYSE", "JNJ": "NYSE", "WMT": "NYSE",
-    "XOM": "NYSE", "UNH": "NYSE", "HD": "NYSE", "PG": "NYSE", "KO": "NYSE",
-    "MCD": "NYSE", "ORCL": "NYSE", "CRM": "NYSE", "DIS": "NYSE", "NKE": "NYSE",
-    "BA": "NYSE", "CAT": "NYSE", "GS": "NYSE", "BAC": "NYSE", "PFE": "NYSE",
-    "T": "NYSE", "VZ": "NYSE", "MRK": "NYSE",
-}
+# Entries whose exchange attribute is missing or unrecognised get this
+# honest label instead of a guessed listing venue.
+UNKNOWN_EXCHANGE = "US Composite"
+
+
+def _normalise_exchange(raw: Any) -> str:
+    """SEC writes "Nasdaq"/"NYSE"/"OTC"; CURVIN filters use upper case.
+
+    A missing value stays honest ("US Composite"), never invented.
+    """
+    text = str(raw or "").strip().upper()
+    return text if text else UNKNOWN_EXCHANGE
 
 
 class SecEdgarCompanyProvider:
@@ -43,7 +48,7 @@ class SecEdgarCompanyProvider:
     name = "sec-edgar"
     label = "SEC EDGAR"
 
-    def __init__(self, url: str = DEFAULT_URL, timeout: float = 5.0) -> None:
+    def __init__(self, url: str = DEFAULT_URL, timeout: float = 8.0) -> None:
         self._url = url
         self._timeout = timeout
 
@@ -62,20 +67,42 @@ class SecEdgarCompanyProvider:
             response.raise_for_status()
             payload: dict[str, Any] = response.json()
 
+        # Shape: {"fields": ["cik", "name", "ticker", "exchange"],
+        #          "data": [[320193, "Apple Inc.", "AAPL", "Nasdaq"], ...]}
+        fields = payload.get("fields") or []
+        rows = payload.get("data") or []
+        if "ticker" not in fields or "name" not in fields:
+            raise ValueError("SEC EDGAR dataset has an unexpected shape")
+        index = {field: position for position, field in enumerate(fields)}
+
         companies: list[Company] = []
-        for entry in payload.values():
-            ticker = str(entry.get("ticker_str", "")).strip().upper()
-            name = str(entry.get("title", "")).strip()
-            cik_value = entry.get("cik_str")
+        seen: set[tuple[str, str]] = set()
+        for row in rows:
+            if not isinstance(row, list) or len(row) < len(fields):
+                continue
+            ticker = str(row[index["ticker"]] or "").strip().upper()
+            name = str(row[index["name"]] or "").strip()
             if not ticker or not name:
                 continue
+            # The dataset can carry the same ticker on several rows
+            # (e.g. multiple venues); keep the first, deterministically.
+            key = (ticker, name.lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            exchange = _normalise_exchange(
+                row[index["exchange"]]
+                if "exchange" in index
+                else None
+            )
+            cik_value = row[index["cik"]] if "cik" in index else None
             companies.append(
                 Company(
                     name=name,
                     ticker=ticker,
-                    exchange=_EXCHANGE_MAP.get(ticker, "US Composite"),
+                    exchange=exchange,
                     cik=str(cik_value).zfill(10) if cik_value else None,
-                    status="unknown",
+                    status="unknown",  # not part of this dataset
                 )
             )
         if not companies:

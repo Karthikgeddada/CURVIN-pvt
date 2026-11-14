@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import {
+  ChevronFirst,
+  ChevronLast,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  X,
+} from "lucide-react";
 import { apiClient } from "@/core/api/client";
 import { Badge } from "@/shared/components/Badge";
 import { Panel } from "@/shared/components/Panel";
@@ -80,6 +87,7 @@ export function CompanySearchView({ mode }: { mode: "search" | "directory" }) {
   const [input, setInput] = useState(q);
   const [recentSearches, setRecentSearches] = useState(readRecentSearches);
   const [exchanges, setExchanges] = useState<ExchangeInfo[] | null>(null);
+  const [jumpTo, setJumpTo] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Keep the text field in sync when the URL changes (back/forward).
@@ -171,6 +179,18 @@ export function CompanySearchView({ mode }: { mode: "search" | "directory" }) {
       },
       { replace: true },
     );
+  };
+
+  // The live SEC universe spans hundreds of pages — a free jump
+  // control keeps deep navigation sane alongside First/Last.
+  const commitJump = () => {
+    const target = Number(jumpTo);
+    if (!Number.isFinite(target) || target < 1) {
+      setJumpTo("");
+      return;
+    }
+    setJumpTo("");
+    if (target !== page) goToPage(Math.min(target, totalPages));
   };
 
   const params = useMemo(
@@ -328,11 +348,47 @@ export function CompanySearchView({ mode }: { mode: "search" | "directory" }) {
         )}
 
         {state.phase === "ready" && state.data.total > PAGE_SIZE && (
-          <footer className="flex items-center justify-between border-t border-hairline px-5 py-3">
-            <span className="text-[12px] text-muted">
+          <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline px-5 py-3">
+            <span className="flex items-center gap-2 text-[12px] text-muted">
               Page {page} of {totalPages}
+              {totalPages > 3 && (
+                <span className="flex items-center gap-1">
+                  <span aria-hidden="true">·</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={jumpTo}
+                    onChange={(event) => setJumpTo(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") commitJump();
+                    }}
+                    placeholder="#"
+                    aria-label="Jump to page"
+                    className="h-6 w-14 rounded-md border border-hairline bg-surface px-1.5 text-center text-[12px] text-foreground outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={commitJump}
+                    className="rounded-md border border-hairline px-2 py-0.5 text-[12px] text-muted transition-colors hover:text-foreground"
+                  >
+                    Go
+                  </button>
+                </span>
+              )}
             </span>
             <span className="flex gap-2">
+              {totalPages > 3 && (
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => goToPage(1)}
+                  aria-label="First page"
+                  className="flex items-center rounded-md border border-hairline px-2.5 py-1 text-[12px] text-muted transition-colors hover:text-foreground disabled:opacity-40"
+                >
+                  <ChevronFirst className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              )}
               <button
                 type="button"
                 disabled={page <= 1}
@@ -351,6 +407,17 @@ export function CompanySearchView({ mode }: { mode: "search" | "directory" }) {
                 Next
                 <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
+              {totalPages > 3 && (
+                <button
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => goToPage(totalPages)}
+                  aria-label="Last page"
+                  className="flex items-center rounded-md border border-hairline px-2.5 py-1 text-[12px] text-muted transition-colors hover:text-foreground disabled:opacity-40"
+                >
+                  <ChevronLast className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              )}
             </span>
           </footer>
         )}
