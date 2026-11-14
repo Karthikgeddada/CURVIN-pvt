@@ -2,3 +2,4 @@
 # Keep this list minimal; every addition must be justified.
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
+httpx==0.28.1  # outbound HTTP to reference-data providers (SEC EDGAR)

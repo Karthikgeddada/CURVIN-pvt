@@ -1,103 +1,144 @@
-import { useEffect, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
-import { apiClient } from "@/core/api/client";
-import { CenteredLayout } from "@/shared/layouts/CenteredLayout";
-import type { HealthResponse } from "@/shared/types/api";
-import { fadeUp, stagger } from "@/design-system/animations/motion";
+import { Link } from "react-router";
+import { ArrowRight, Database, Search } from "lucide-react";
+import { Badge } from "@/shared/components/Badge";
+import { Panel } from "@/shared/components/Panel";
+
+const LIVE_MODULES = [
+  {
+    title: "Company Discovery",
+    body: "Search every US-listed company by name or ticker; filter by exchange and listing status.",
+    to: "/companies",
+    cta: "Open search",
+  },
+  {
+    title: "Company Directory",
+    body: "Browse the full reference universe, page by page, with verified exchange listings.",
+    to: "/companies/directory",
+    cta: "Browse directory",
+  },
+  {
+    title: "Company Profiles",
+    body: "Verified identity, business profile and listing status for any company you research.",
+    to: "/companies/profiles",
+    cta: "View profiles",
+  },
+];
 
 /**
- * Foundation entry page. Intentionally restrained: it confirms the
- * application runs, the design tokens render and the API client
- * reaches the backend. Business capabilities arrive in later
- * milestones, each with its own feature module and route.
+ * Market Intelligence Overview — the CURVIN landing surface. It
+ * states clearly what is live today, what is planned next, and never
+ * shows simulated market numbers.
  */
 export function HomePage() {
-  const reducedMotion = useReducedMotion();
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [reachable, setReachable] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    apiClient
-      .getHealth()
-      .then((result) => {
-        if (!cancelled) {
-          setHealth(result);
-          setReachable(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setReachable(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const variants = reducedMotion ? undefined : { hidden: {}, visible: {} };
-  const itemVariants = reducedMotion ? undefined : fadeUp;
-
   return (
-    <CenteredLayout>
-      <motion.div
-        className="flex flex-col items-center text-center"
-        variants={variants ?? stagger}
-        initial="hidden"
-        animate="visible"
-      >
-        <motion.div variants={itemVariants} className="mb-8">
-          <svg
-            viewBox="0 0 32 32"
-            className="h-10 w-10"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.75"
-            strokeLinecap="round"
+    <div className="space-y-8">
+      <section>
+        <p className="text-[11px] uppercase tracking-[0.14em] text-muted">
+          CURVIN · Market Intelligence Overview
+        </p>
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight">
+          Institutional-grade market intelligence, engineered end to end.
+        </h1>
+        <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted">
+          CURVIN unifies company discovery, market, institutional, sector and
+          risk intelligence into one governed platform. Milestone 1 ships
+          the application workspace with live company discovery on verified
+          reference data.
+        </p>
+      </section>
+
+      <section className="flex flex-wrap items-center gap-2">
+        <Badge tone="up">Company discovery · live</Badge>
+        <Badge tone="outline">Market data · next milestone</Badge>
+        <Badge tone="muted">Institutional · sector · risk · AI · roadmap</Badge>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {LIVE_MODULES.map((module) => (
+          <Panel key={module.title} title={module.title}>
+            <p className="min-h-[60px] text-[13px] leading-relaxed text-muted">
+              {module.body}
+            </p>
+            <Link
+              to={module.to}
+              className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium underline underline-offset-4 transition-colors hover:text-accent"
+            >
+              {module.cta}
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          </Panel>
+        ))}
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <Panel
+          title="Find a company"
+          subtitle="The fastest path into CURVIN research"
+          actions={
+            <kbd className="rounded bg-subtle px-1.5 py-0.5 text-[11px] text-muted">
+              /
+            </kbd>
+          }
+        >
+          <p className="text-[13px] leading-relaxed text-muted">
+            Press / anywhere, or start typing a name like “NVIDIA” or a
+            ticker like “NVDA”. Results come from the live company reference
+            API — every listing shows its exchange, sector, industry and
+            status.
+          </p>
+          <Link
+            to="/companies"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2 text-[13px] font-medium transition-colors hover:border-foreground/30"
           >
-            <path d="M22.6 7.6A11 11 0 1 0 25.9 21.4" />
-          </svg>
-        </motion.div>
+            <Search className="h-4 w-4" aria-hidden="true" />
+            Search companies
+          </Link>
+        </Panel>
 
-        <motion.h1
-          variants={itemVariants}
-          className="text-[32px] font-semibold leading-none tracking-[0.14em]"
+        <Panel
+          title="Data foundation"
+          subtitle="What powers CURVIN today — and what comes next"
         >
-          CURVIN
-        </motion.h1>
-
-        <motion.p
-          variants={itemVariants}
-          className="mt-4 max-w-xs text-[15px] leading-relaxed text-muted"
-        >
-          Company intelligence, engineered. The foundation for connected
-          business, market, financial and risk insight.
-        </motion.p>
-
-        <motion.div
-          variants={itemVariants}
-          className="mt-10 inline-flex items-center gap-2 rounded-full border-hairline bg-subtle px-3.5 py-1.5 text-xs text-muted"
-          role="status"
-          aria-live="polite"
-        >
-          <span
-            className={
-              reachable === null
-                ? "h-1.5 w-1.5 rounded-full bg-muted opacity-60"
-                : reachable
-                  ? "h-1.5 w-1.5 rounded-full bg-success"
-                  : "h-1.5 w-1.5 rounded-full bg-danger"
-            }
-          />
-          <span>
-            {health
-              ? `Backend · ${health.environment}`
-              : reachable === null
-                ? "Connecting to services…"
-                : "Backend unavailable"}
-          </span>
-        </motion.div>
-      </motion.div>
-    </CenteredLayout>
+          <ul className="space-y-3 text-[13px] leading-relaxed">
+            <li className="flex items-start gap-2.5">
+              <Database
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-change-up"
+                aria-hidden="true"
+              />
+              <span>
+                <span className="font-medium">
+                  Company reference data — live.
+                </span>{" "}
+                SEC EDGAR-backed US listings with deterministic fixtures as
+                automatic fallback, so discovery never silently breaks.
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <Database
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted"
+                aria-hidden="true"
+              />
+              <span>
+                <span className="font-medium">Market data — next.</span>{" "}
+                Quotes, indices and market breadth arrive with the licensed
+                market data provider in the next milestone.
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <Database
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted"
+                aria-hidden="true"
+              />
+              <span>
+                <span className="font-medium">Fundamentals — planned.</span>{" "}
+                Financial statements keyed by CIK from the same governed
+                reference data.
+              </span>
+            </li>
+          </ul>
+        </Panel>
+      </section>
+    </div>
   );
 }
+

@@ -1,6 +1,11 @@
 import { API_PREFIX, env } from "@/app/config/env";
 import { ApiError } from "@/core/error-handling/ApiError";
 import type { HealthResponse } from "@/shared/types/api";
+import type {
+  CompanyProfile,
+  CompanySearchResponse,
+  ExchangeListResponse,
+} from "@/shared/types/company";
 
 /**
  * Central API client. All network access goes through this module so
@@ -42,6 +47,37 @@ export class ApiClient {
 
   getHealth(): Promise<HealthResponse> {
     return this.request<HealthResponse>("/health");
+  }
+
+  /** Company discovery — search by name or ticker with filters. */
+  searchCompanies(params: {
+    q?: string;
+    exchange?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<CompanySearchResponse> {
+    const query = new URLSearchParams();
+    if (params.q) query.set("q", params.q);
+    if (params.exchange) query.set("exchange", params.exchange);
+    if (params.status) query.set("status", params.status);
+    query.set("page", String(params.page ?? 1));
+    query.set("limit", String(params.limit ?? 25));
+    return this.request<CompanySearchResponse>(
+      `/companies/search?${query.toString()}`,
+    );
+  }
+
+  /** Full profile for a single listing, keyed by ticker. */
+  getCompanyProfile(ticker: string): Promise<CompanyProfile> {
+    return this.request<CompanyProfile>(
+      `/companies/${encodeURIComponent(ticker)}`,
+    );
+  }
+
+  /** Supported exchanges with coverage counts. */
+  getExchanges(): Promise<ExchangeListResponse> {
+    return this.request<ExchangeListResponse>("/companies/exchanges");
   }
 }
 

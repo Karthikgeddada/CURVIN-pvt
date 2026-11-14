@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Class-based dark theme: the ThemeProvider toggles `.dark` on <html>.
+   Tailwind `dark:` utilities follow the class, not the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
  * CURVIN design tokens.
  * Semantic values are defined once as CSS custom properties, in light
@@ -19,21 +23,27 @@
   --success: #1d7a45;
   --warning: #b25000;
   --danger: #c0392b;
+  --change-up: #1a7f37;
+  --change-down: #cf222e;
+  --surface: #ffffff;
+  --surface-border: #e3e3e6;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b0b0d;
-    --foreground: #f5f5f7;
-    --muted: #98989d;
-    --subtle: #17171a;
-    --hairline: #26262b;
-    --accent: #f5f5f7;
-    --accent-foreground: #0b0b0d;
-    --success: #32d074;
-    --warning: #ff9f4a;
-    --danger: #ff6b5e;
-  }
+.dark {
+  --background: #0b0b0d;
+  --foreground: #f5f5f7;
+  --muted: #98989d;
+  --subtle: #17171a;
+  --hairline: #26262b;
+  --accent: #f5f5f7;
+  --accent-foreground: #0b0b0d;
+  --success: #32d074;
+  --warning: #ff9f4a;
+  --danger: #ff6b5e;
+  --change-up: #2ea043;
+  --change-down: #f85149;
+  --surface: #131316;
+  --surface-border: #26262b;
 }
 
 @theme inline {
@@ -47,6 +57,10 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-change-up: var(--change-up);
+  --color-change-down: var(--change-down);
+  --color-surface: var(--surface);
+  --color-surface-border: var(--surface-border);
 
   --font-sans:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
