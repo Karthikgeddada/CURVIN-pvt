@@ -72,18 +72,27 @@ const fundamentalsUnavailable = (
 const filingsUnavailable = (_data: CompanyFilingsResponse): string | null =>
   null;
 
+// Module-level wrappers keep a stable identity AND keep `this` bound:
+// passing apiClient.getCompanyMarket as a bare reference detaches the
+// method from its object and crashes with "Cannot read properties of
+// undefined (reading 'request')".
+const fetchMarket = (ticker: string) => apiClient.getCompanyMarket(ticker);
+const fetchFundamentals = (ticker: string) =>
+  apiClient.getCompanyFundamentals(ticker);
+const fetchFilings = (ticker: string) => apiClient.getCompanyFilings(ticker);
+
 /**
  * Loads the three M2 intelligence sub-resources for one company in
  * parallel. Each resource has an independent state machine so a
  * failing feed degrades only its own panel.
  */
 export function useCompanyIntelligence(ticker: string) {
-  const market = useResource(ticker, apiClient.getCompanyMarket, marketUnavailable);
+  const market = useResource(ticker, fetchMarket, marketUnavailable);
   const fundamentals = useResource(
     ticker,
-    apiClient.getCompanyFundamentals,
+    fetchFundamentals,
     fundamentalsUnavailable,
   );
-  const filings = useResource(ticker, apiClient.getCompanyFilings, filingsUnavailable);
+  const filings = useResource(ticker, fetchFilings, filingsUnavailable);
   return { market, fundamentals, filings };
 }
