@@ -83,15 +83,29 @@ class AlphaVantageMarketProvider:
         )
 
 
-def provider_from_env() -> AlphaVantageMarketProvider | None:
-    """Build the licensed quote provider when configuration allows."""
-    if os.environ.get("CURVIN_MARKET_PROVIDER", "").lower() != "alphavantage":
+def provider_from_env() -> object | None:
+    """Build the configured quote provider, or None when unconfigured.
+
+    ``CURVIN_MARKET_PROVIDER`` selects the implementation:
+    ``alphavantage`` (licensed GLOBAL_QUOTE) or ``massive`` (free
+    end-of-day daily bars). Both need ``CURVIN_MARKET_API_KEY``; without
+    full configuration the market service serves an honest
+    unavailability instead of simulated prices.
+    """
+    provider_name = os.environ.get("CURVIN_MARKET_PROVIDER", "").lower()
+    if provider_name not in ("alphavantage", "massive"):
         return None
     api_key = os.environ.get("CURVIN_MARKET_API_KEY", "")
     if not api_key:
         logger.warning(
-            "CURVIN_MARKET_PROVIDER=alphavantage but CURVIN_MARKET_API_KEY "
-            "is unset; market quotes will be reported as unconfigured."
+            "CURVIN_MARKET_PROVIDER=%s but CURVIN_MARKET_API_KEY is "
+            "unset; market quotes will be reported as unconfigured.",
+            provider_name,
         )
         return None
+    if provider_name == "massive":
+        from app.providers.market_massive import MassiveMarketProvider
+
+        return MassiveMarketProvider(api_key=api_key)
     return AlphaVantageMarketProvider(api_key=api_key)
+
