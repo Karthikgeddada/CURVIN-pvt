@@ -25,7 +25,6 @@ const jsonResponse = (body: unknown) =>
 const marketBody: CompanyMarketResponse = {
   ticker: "AAPL",
   quote: {
-    ticker: "AAPL",
     price: 356.27,
     previous_close: 354.88,
     change: 1.39,
@@ -121,11 +120,17 @@ describe("useCompanyIntelligence (real ApiClient, stubbed fetch)", () => {
 
     const { result } = renderHook(() => useCompanyIntelligence("AAPL"));
 
-    await waitFor(() =>
-      expect(result.current.market.phase).toBe("unavailable"),
-    );
-    expect(result.current.market.reason).toBe(
-      "No market data provider configured",
-    );
+    // Narrow inside waitFor so TypeScript accepts `.reason` on the
+    // discriminated union and testing-library keeps retrying.
+    await waitFor(() => {
+      if (result.current.market.phase !== "unavailable") {
+        throw new Error(
+          `market phase not unavailable: ${result.current.market.phase}`,
+        );
+      }
+      expect(result.current.market.reason).toBe(
+        "No market data provider configured",
+      );
+    });
   });
 });
