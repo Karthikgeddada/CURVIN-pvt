@@ -5,6 +5,7 @@ import { ArrowUpRight } from "lucide-react";
 import { apiClient } from "@/core/api/client";
 import { ApiError } from "@/core/error-handling/ApiError";
 import { useRecentCompanies } from "@/features/companies/hooks/useRecentCompanies";
+import { NewsAnalysisSection } from "@/features/companies/components/NewsAnalysisSection";
 import { Badge } from "@/shared/components/Badge";
 import { Panel } from "@/shared/components/Panel";
 import { Skeleton } from "@/shared/components/Skeleton";
@@ -529,6 +530,8 @@ export function CompanyProfilePage() {
           />
         )}
       </Panel>
+
+      <NewsAnalysisSection ticker={decoded} />
     </div>
   );
 }

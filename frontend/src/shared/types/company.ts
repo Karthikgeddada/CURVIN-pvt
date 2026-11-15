@@ -142,3 +142,48 @@ export interface CompanyFilingsResponse {
   data_source: DataSourceInfo;
   as_of: string;
 }
+
+// --- Stock market analysis (news sentiment) ---------------------------
+
+export type SentimentLabel = "positive" | "negative" | "neutral";
+
+/** One engine verdict on one article, with the honest why. */
+export interface ArticleSentiment {
+  label: SentimentLabel;
+  /** 0-1 as returned by the judging engine. */
+  confidence: number;
+  reason: string;
+  /** Engine identifier — heuristic verdicts are labelled as such. */
+  engine: string;
+}
+
+export interface AnalyzedArticle {
+  title: string;
+  source: string;
+  published_at: string;
+  url: string;
+  sentiment: ArticleSentiment;
+}
+
+export interface NewsOverall {
+  label: SentimentLabel;
+  positive_pct: number;
+  negative_pct: number;
+  neutral_pct: number;
+  /** One-sentence honest summary of the verdicts and their drivers. */
+  summary: string;
+}
+
+/** Response of GET /companies/{ticker}/news-analysis. */
+export interface CompanyNewsAnalysisResponse {
+  ticker: string;
+  window_hours: number;
+  available: boolean;
+  article_count: number;
+  overall: NewsOverall | null;
+  articles: AnalyzedArticle[];
+  data_source: DataSourceInfo;
+  /** Null when no news was available to judge. */
+  sentiment_engine: DataSourceInfo | null;
+  as_of: string;
+}

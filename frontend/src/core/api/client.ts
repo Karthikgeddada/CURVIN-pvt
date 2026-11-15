@@ -5,6 +5,7 @@ import type {
   CompanyFilingsResponse,
   CompanyFundamentalsResponse,
   CompanyMarketResponse,
+  CompanyNewsAnalysisResponse,
   CompanyProfile,
   CompanySearchResponse,
   ExchangeListResponse,
@@ -104,6 +105,15 @@ export class ApiClient {
   ): Promise<CompanyFilingsResponse> {
     return this.request<CompanyFilingsResponse>(
       `/companies/${encodeURIComponent(ticker)}/filings?limit=${limit}`,
+    );
+  }
+
+  /** Sentiment-analysed recent news for a ticker, with reasons. */
+  getCompanyNewsAnalysis(
+    ticker: string,
+  ): Promise<CompanyNewsAnalysisResponse> {
+    return this.request<CompanyNewsAnalysisResponse>(
+      `/companies/${encodeURIComponent(ticker)}/news-analysis`,
     );
   }
 }

@@ -136,3 +136,66 @@ class FilingsProvider(Protocol):
     async def get_recent(self, cik: str, limit: int = 10) -> list[Filing]:
         """Return the most recent filings, newest first. Raises on failure."""
         ...  # pragma: no cover
+
+
+# --- News (stock market analysis on the company profile) --------------
+
+
+@dataclass(frozen=True)
+class NewsArticle:
+    """One news story about a ticker, exactly as the provider published
+    it. Sentiment is attached later, by a separate sentiment engine —
+    the news provider itself never judges tone."""
+
+    title: str
+    source: str
+    published_at: str  # ISO timestamp
+    url: str
+    description: str | None = None  # summary/body excerpt when offered
+
+
+class NewsProvider(Protocol):
+    """Anything that can produce recent news for a ticker."""
+
+    name: str
+    label: str
+
+    async def get_recent(
+        self, ticker: str, window_hours: int, limit: int
+    ) -> list[NewsArticle]:
+        """Return stories published within the look-back window, newest
+        first. Raises on transport/provider failure — the service layer
+        turns that into an honest unavailability, never filler content.
+        """
+        ...  # pragma: no cover
+
+
+# --- Sentiment (stock market analysis on the company profile) ---------
+
+
+@dataclass(frozen=True)
+class ArticleSentiment:
+    """One engine verdict on one article. ``reason`` is the honest why
+    shown to the user; ``engine`` names the judge so heuristic output is
+    never dressed up as model judgement."""
+
+    label: str  # positive | negative | neutral
+    confidence: float  # 0.0-1.0
+    reason: str
+    engine: str
+
+
+class SentimentEngine(Protocol):
+    """Anything that can judge the tone of a batch of articles."""
+
+    name: str
+    label: str
+
+    async def score_batch(
+        self, articles: list[NewsArticle]
+    ) -> list[ArticleSentiment]:
+        """Return one verdict per article, in input order. Raises on
+        failure — the service layer falls back to its deterministic
+        engine and flags the result as degraded.
+        """
+        ...  # pragma: no cover

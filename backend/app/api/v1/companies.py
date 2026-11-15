@@ -12,6 +12,7 @@ from app.core.errors import DomainError
 from app.services.company_service import company_service
 from app.services.intelligence_service import intelligence_service
 from app.services.market_service import market_service
+from app.services.news_analysis_service import news_analysis_service
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 
@@ -61,6 +62,20 @@ async def get_company_filings(
 ) -> dict[str, object]:
     """Recent SEC filings keyed by CIK, newest first."""
     return await intelligence_service.filings_payload(ticker, limit=limit)
+
+
+@router.get("/{ticker}/news-analysis")
+async def get_company_news_analysis(
+    ticker: str,
+    window_hours: int = Query(default=24, ge=6, le=72),
+    limit: int = Query(default=25, ge=5, le=50),
+) -> dict[str, object]:
+    """Sentiment analysis of recent news for a ticker: per-article
+    verdicts with reasons, plus the overall positive/negative/neutral
+    split for the look-back window."""
+    return await news_analysis_service.analysis_payload(
+        ticker, window_hours=window_hours, limit=limit
+    )
 
 
 @router.get("/{ticker}")
