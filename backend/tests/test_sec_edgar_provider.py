@@ -104,6 +104,22 @@ def test_malformed_rows_are_skipped_not_fatal(monkeypatch):
     assert [c.ticker for c in companies] == ["AAPL"]
 
 
+def test_hyphen_share_class_ticker_is_dot_normalised(monkeypatch):
+    _patch(
+        monkeypatch,
+        _payload(
+            [1067983, "BERKSHIRE HATHAWAY INC", "BRK-B", "NYSE"],
+            [1109354, "BRUKER CORP", "BRKR", "Nasdaq"],
+        ),
+    )
+    companies = _run(SecEdgarCompanyProvider().load_universe())
+    by_ticker = {c.ticker: c for c in companies}
+    # SEC hyphen notation -> CURVIN/Massive dot notation.
+    assert "BRK.B" in by_ticker and "BRK-B" not in by_ticker
+    assert by_ticker["BRK.B"].cik == "0001067983"
+    assert by_ticker["BRKR"].ticker == "BRKR"  # untouched
+
+
 def test_duplicate_ticker_name_rows_dedupe(monkeypatch):
     _patch(
         monkeypatch,

@@ -81,6 +81,12 @@ class SecEdgarCompanyProvider:
             if not isinstance(row, list) or len(row) < len(fields):
                 continue
             ticker = str(row[index["ticker"]] or "").strip().upper()
+            # SEC writes multi-class and series tickers with a hyphen
+            # ("BRK-B", "JPM-PC"); CURVIN's canonical notation — used
+            # by the profile share-class parsing and by Massive's bars
+            # API — is the dot form ("BRK.B"). A separator swap, never
+            # a change to the symbol itself.
+            ticker = ticker.replace("-", ".")
             name = str(row[index["name"]] or "").strip()
             if not ticker or not name:
                 continue
